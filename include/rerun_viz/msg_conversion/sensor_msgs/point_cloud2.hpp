@@ -18,18 +18,31 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-
 #pragma once
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <rerun.hpp>
+#include "rclcpp/rclcpp.hpp"
+
+#include <rerun_viz/msg_conversion/converter.hpp>
 
 namespace rerun_viz
 {
 
-class PointCloud2
+class PointCloud2 : public Converter
 {
 public:
-  void logToRerun(const sensor_msgs::msg::PointCloud2 & pc2_msg);
+  PointCloud2(rclcpp::Node::SharedPtr node, const std::string & topic_name);
+
+  static rerun::Points3D toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg);
+
+  void topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) const;
+
+  const std::string getRosTypeName() override { return "sensor_msgs/msg/PointCloud2"; }
+
+private:
+  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
+  rclcpp::Node::SharedPtr node_;
 };
 
 }  // namespace rerun_viz

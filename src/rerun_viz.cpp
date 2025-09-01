@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <memory>
 
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
@@ -30,11 +31,11 @@
 #include <ament_index_cpp/get_package_prefix.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
+#include <rerun_viz/node.hpp>
+#include "rclcpp/rclcpp.hpp"
+
 int main(int argc, char ** argv)
 {
-  (void)argc;
-  (void)argv;
-
   std::string rerun_viewer_search_path = "";
   rerun::SpawnOptions spawnOptions;
 
@@ -67,6 +68,18 @@ int main(int argc, char ** argv)
 
   // Log the "my_points" entity with our data, using the `Points3D` archetype.
   rec.log("my_points", rerun::Points3D(points).with_colors(colors).with_radii({0.5f}));
+
+  rclcpp::init(argc, argv);
+
+  // Must be constructed only after rclcpp::init()!
+  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>();
+
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node);
+
+  executor.spin();
+
+  rclcpp::shutdown();
 
   return 0;
 }

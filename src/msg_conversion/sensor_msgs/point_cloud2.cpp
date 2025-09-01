@@ -18,16 +18,58 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-
 #include <rerun_viz/msg_conversion/sensor_msgs/point_cloud2.hpp>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
+using std::placeholders::_1;
 
 namespace rerun_viz
 {
 
-void PointCloud2::logToRerun(const sensor_msgs::msg::PointCloud2 & pc2_msg)
+PointCloud2::PointCloud2(rclcpp::Node::SharedPtr node, const std::string & topic_name)
 {
-  // Conversion logic from sensor_msgs::msg::PointCloud2 to ReRun format goes here.
-  // This is a placeholder for the actual implementation.
+  node_ = node;
+  subscription_ = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+    topic_name, rclcpp::SensorDataQoS(), std::bind(&PointCloud2::topic_callback, this, _1));
+}
+
+void PointCloud2::topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) const
+{
+  rerun::Points3D points = toRerunType(*msg);
+
+  RCLCPP_INFO(node_->get_logger(), "Got a point cloud message!");
+
+  // TODO log to rerun
+  // rec_.log(msg->header.frame_id, *msg->header.stamp, points);
+}
+
+// TODO there is probably a fancier way to do this than return-by-copy.
+// Maybe it should return `rerun::Points3D&&` with return std::move(...)? Figure out the right way later.
+rerun::Points3D PointCloud2::toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg)
+{
+  rerun::Points3D out;
+
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(pc2_msg, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(pc2_msg, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(pc2_msg, "z");
+
+  // TODO: PointCloud2 also supports RGB colors packed into the data
+
+  // sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(pc2_msg, "r");
+  // sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(pc2_msg, "g");
+  // sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(pc2_msg, "b");
+
+  std::vector<rerun::components::Position3D> rerun_point_data;
+
+  for (size_t i = 0; i < (pc2_msg.height * pc2_msg.width); ++i, ++iter_x, ++iter_y, ++iter_z) {
+    rerun_point_data.push_back({
+      *iter_x,
+      *iter_y,
+      *iter_z,
+    });
+  }
+
+  return rerun::Points3D(rerun_point_data);
 }
 
 }  // namespace rerun_viz

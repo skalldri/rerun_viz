@@ -11,11 +11,15 @@ find_package(ament_index_cpp REQUIRED)
 find_package(rerun_sdk_vendor REQUIRED)
 find_package(rerun_sdk REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
 
 # Declare a static lib to contain most of the business logic
 add_library(
   rerun_viz_lib
   STATIC
+  src/node.cpp
+  src/msg_conversion/converter_factory.cpp
   src/msg_conversion/sensor_msgs/point_cloud2.cpp
 )
 target_include_directories(rerun_viz_lib PUBLIC
@@ -23,6 +27,8 @@ target_include_directories(rerun_viz_lib PUBLIC
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
 ament_target_dependencies(rerun_viz_lib sensor_msgs)
+ament_target_dependencies(rerun_viz_lib rclcpp)
+target_link_libraries(rerun_viz_lib rerun_sdk)
 
 # Declare the actual node executable
 add_executable(rerun_viz src/rerun_viz.cpp)
@@ -43,26 +49,33 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
-  # set(ament_cmake_copyright_FOUND TRUE)
+  set(ament_cmake_copyright_FOUND TRUE)
 
   # the following line skips cpplint (only works in a git repo)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files
-  # set(ament_cmake_cpplint_FOUND TRUE)
+  set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 
 
-  find_package(ament_cmake_gtest)
-  ament_add_gtest(
+  find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_gmock REQUIRED)
+
+  ament_add_gmock(
     unit_tests
     test/test_simple.cpp
+    test/test_node.cpp
     test/msg_conversion/sensor_msgs/test_point_cloud2.cpp
   )
 
   target_link_libraries(unit_tests rerun_viz_lib)
+  target_link_libraries(unit_tests rerun_arrow_target)
+  ament_target_dependencies(unit_tests rclcpp)
+  ament_target_dependencies(unit_tests sensor_msgs)
 
-  # find_package(ament_cmake_gmock REQUIRED)
-  # ament_add_gmock(some_test <test_sources>)
+  target_include_directories(unit_tests PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/test>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
 endif()
 

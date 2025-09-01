@@ -17,6 +17,8 @@
   <depend>rerun_sdk</depend>
 
   <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>rclcpp</depend>
 
   <exec_depend>rerun_viewer_vendor</exec_depend>
 
