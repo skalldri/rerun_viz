@@ -42,10 +42,36 @@ void Imu::topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const
 
   RCLCPP_INFO(node_->get_logger(), "Got an IMU message!");
 
-  if (rec_) {
-    // rec_->log(topic_name_ + "/Imu", points);
-  } else {
+  if (!rec_) {
     RCLCPP_WARN(node_->get_logger(), "No valid RecordingStream, cannot visualize data.");
+    return;
+  }
+
+  // We need to check the first value of the covariance matrix for each element (orientation, angular_velocity, linear_acceleration)
+  // If that element is -1, then that element is not provided by the underlying sensor
+  // https://docs.ros.org/en/jazzy/p/sensor_msgs/msg/Imu.html
+
+  if (msg->angular_velocity_covariance[0] > -1.0) {
+    rec_->log(topic_name_ + "/Imu/angular_velocity/x", rerun::Scalars(msg->angular_velocity.x));
+    rec_->log(topic_name_ + "/Imu/angular_velocity/y", rerun::Scalars(msg->angular_velocity.y));
+    rec_->log(topic_name_ + "/Imu/angular_velocity/z", rerun::Scalars(msg->angular_velocity.z));
+  }
+
+  if (msg->linear_acceleration_covariance[0] > -1.0) {
+    rec_->log(
+      topic_name_ + "/Imu/linear_acceleration/x", rerun::Scalars(msg->linear_acceleration.x));
+    rec_->log(
+      topic_name_ + "/Imu/linear_acceleration/y", rerun::Scalars(msg->linear_acceleration.y));
+    rec_->log(
+      topic_name_ + "/Imu/linear_acceleration/z", rerun::Scalars(msg->linear_acceleration.z));
+  }
+
+  if (msg->orientation_covariance[0] > -1.0) {
+    rec_->log(
+      topic_name_ + "/Imu/orientation",
+      rerun::Transform3D().with_axis_length(1.0).with_quaternion(
+        rerun::Quaternion().from_xyzw(
+          msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w)));
   }
 }
 

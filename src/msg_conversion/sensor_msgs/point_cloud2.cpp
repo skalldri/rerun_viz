@@ -43,7 +43,7 @@ void PointCloud2::topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr 
   RCLCPP_INFO(node_->get_logger(), "Got a point cloud message!");
 
   if (rec_) {
-    rec_->log(topic_name_ + "/PointCloud2", points, rerun::Transform3D().with_axis_length(1.0));
+    rec_->log(topic_name_ + "/PointCloud2", points);
   } else {
     RCLCPP_WARN(node_->get_logger(), "No valid RecordingStream, cannot visualize data.");
   }
