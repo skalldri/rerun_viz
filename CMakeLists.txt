@@ -21,6 +21,7 @@ add_library(
   src/node.cpp
   src/msg_conversion/converter_factory.cpp
   src/msg_conversion/sensor_msgs/point_cloud2.cpp
+  src/msg_conversion/sensor_msgs/imu.cpp
 )
 target_include_directories(rerun_viz_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

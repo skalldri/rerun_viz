@@ -22,7 +22,7 @@
 
 #include <memory>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <rerun.hpp>
 #include "rclcpp/rclcpp.hpp"
 
@@ -31,21 +31,21 @@
 namespace rerun_viz
 {
 
-class PointCloud2 : public Converter
+class Imu : public Converter
 {
 public:
-  PointCloud2(
+  Imu(
     rclcpp::Node::SharedPtr node, const std::string & topic_name,
     std::shared_ptr<rerun::RecordingStream> rec = nullptr);
 
-  static rerun::Points3D toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg);
+  // static rerun::Points3D toRerunType(const sensor_msgs::msg::Imu & pc2_msg);
 
-  void topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) const;
+  void topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const;
 
-  const std::string getRosTypeName() override { return "sensor_msgs/msg/PointCloud2"; }
+  const std::string getRosTypeName() override { return "sensor_msgs/msg/Imu"; }
 
 private:
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subscription_;
   rclcpp::Node::SharedPtr node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;

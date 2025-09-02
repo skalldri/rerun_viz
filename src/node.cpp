@@ -10,21 +10,17 @@ using std::literals::chrono_literals::operator""s;
 namespace rerun_viz
 {
 
-Node::Node() : rclcpp::Node("rerun_viz_node")
+Node::Node(std::shared_ptr<rerun::RecordingStream> rec) : rclcpp::Node("rerun_viz_node"), rec_(rec)
 {
   RCLCPP_INFO(this->get_logger(), "Rerun Viz Node has been started.");
 
   graph_update_thread_ = std::thread(std::bind(&Node::graphUpdateThread, this));
-
-  // rclcpp::on_shutdown([this]() { this->stopAndJoinGraphUpdateThread(); });
 }
 
 Node::~Node()
 {
   // Force clangformat onto two lines
-  std::cout << "~Node Start" << std::endl;
   stopAndJoinGraphUpdateThread();
-  std::cout << "~Node End" << std::endl;
 }
 
 void Node::stopAndJoinGraphUpdateThread()
@@ -104,7 +100,7 @@ void Node::updateSubscriptions(std::map<std::string, std::vector<std::string>> t
       for (const auto & type : type_list) {
         try {
           auto converter =
-            ConverterFactory::getConverterForRosTopic(node_shared_ptr, topic_name, type);
+            ConverterFactory::getConverterForRosTopic(node_shared_ptr, topic_name, type, rec_);
           converters_for_topic.push_back(converter);
         } catch (const std::runtime_error & e) {
           try {
@@ -140,7 +136,7 @@ void Node::updateSubscriptions(std::map<std::string, std::vector<std::string>> t
         if (!found) {
           try {
             auto converter =
-              ConverterFactory::getConverterForRosTopic(node_shared_ptr, topic_name, type);
+              ConverterFactory::getConverterForRosTopic(node_shared_ptr, topic_name, type, rec_);
             existing_converters.push_back(converter);
           } catch (const std::runtime_error & e) {
             RCLCPP_DEBUG(
@@ -183,8 +179,6 @@ bool Node::canGraphUpdateThreadRun()
 
 void Node::getTopicsAndUpdateSubscriptions()
 {
-  std::cout << "getTopicsAndUpdateSubscriptions!" << std::endl;
-
   auto topicNamesAndTypes = this->get_topic_names_and_types();
 
   for (const auto & [topic_name, type_list] : topicNamesAndTypes) {
@@ -210,11 +204,9 @@ void Node::graphUpdateThread()
     this->wait_for_graph_change(event, 1s);
 
     if (!canGraphUpdateThreadRun()) {
-      std::cout << "Aborting Graph Update Thread!" << std::endl;
       return;
     }
 
-    std::cout << "Updating topic subscriptions from thread!" << std::endl;
     getTopicsAndUpdateSubscriptions();
   }
 }

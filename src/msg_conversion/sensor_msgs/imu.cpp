@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <rerun_viz/msg_conversion/sensor_msgs/point_cloud2.hpp>
+#include <rerun_viz/msg_conversion/sensor_msgs/imu.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 using std::placeholders::_1;
@@ -26,24 +26,24 @@ using std::placeholders::_1;
 namespace rerun_viz
 {
 
-PointCloud2::PointCloud2(
+Imu::Imu(
   rclcpp::Node::SharedPtr node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
 : rec_(rec), topic_name_(topic_name)
 {
   node_ = node;
-  subscription_ = node->create_subscription<sensor_msgs::msg::PointCloud2>(
-    topic_name, rclcpp::SensorDataQoS(), std::bind(&PointCloud2::topic_callback, this, _1));
+  subscription_ = node->create_subscription<sensor_msgs::msg::Imu>(
+    topic_name, rclcpp::SensorDataQoS(), std::bind(&Imu::topic_callback, this, _1));
 }
 
-void PointCloud2::topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) const
+void Imu::topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const
 {
-  rerun::Points3D points = toRerunType(*msg);
+  // rerun::Points3D points = toRerunType(*msg);
 
-  RCLCPP_INFO(node_->get_logger(), "Got a point cloud message!");
+  RCLCPP_INFO(node_->get_logger(), "Got an IMU message!");
 
   if (rec_) {
-    rec_->log(topic_name_ + "/PointCloud2", points, rerun::Transform3D().with_axis_length(1.0));
+    // rec_->log(topic_name_ + "/Imu", points);
   } else {
     RCLCPP_WARN(node_->get_logger(), "No valid RecordingStream, cannot visualize data.");
   }
@@ -51,7 +51,7 @@ void PointCloud2::topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr 
 
 // TODO there is probably a fancier way to do this than return-by-copy.
 // Maybe it should return `rerun::Points3D&&` with return std::move(...)? Figure out the right way later.
-rerun::Points3D PointCloud2::toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg)
+/*rerun::Points3D PointCloud2::toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg)
 {
   rerun::Points3D out;
 
@@ -76,6 +76,6 @@ rerun::Points3D PointCloud2::toRerunType(const sensor_msgs::msg::PointCloud2 & p
   }
 
   return rerun::Points3D(rerun_point_data);
-}
+}*/
 
 }  // namespace rerun_viz

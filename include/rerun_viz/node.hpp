@@ -1,6 +1,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include <rerun_viz/msg_conversion/converter.hpp>
+#include <rerun.hpp>
 
 #include <thread>
 #include <map>
@@ -14,7 +15,7 @@ namespace rerun_viz
 class Node : public rclcpp::Node
 {
 public:
-  Node();
+  Node(std::shared_ptr<rerun::RecordingStream> rec);
   ~Node();
 
   void updateSubscriptions(std::map<std::string, std::vector<std::string>> topicNamesAndTypes);
@@ -33,6 +34,7 @@ private:
 
   std::mutex subscriptions_mutex_;
   std::map<std::string, std::vector<std::shared_ptr<Converter>>> subscriptions_;
+  std::shared_ptr<rerun::RecordingStream> rec_;
 };
 
 }  // namespace rerun_viz

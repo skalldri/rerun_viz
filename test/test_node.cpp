@@ -45,7 +45,7 @@ public:
 
 TEST_F(NodeTestFixture, TestSubscriptionsUnsupportedMessageType)
 {
-  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>();
+  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr);
 
   std::map<std::string, std::vector<std::string>> topicNamesAndTypes;
 
@@ -64,7 +64,7 @@ TEST_F(NodeTestFixture, TestSubscriptionsUnsupportedMessageType)
 
 TEST_F(NodeTestFixture, TestSubscriptions)
 {
-  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>();
+  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr);
 
   // Create a node to publish some fake topics
   auto publisher_node = std::make_shared<rclcpp::Node>("publisher_node");
