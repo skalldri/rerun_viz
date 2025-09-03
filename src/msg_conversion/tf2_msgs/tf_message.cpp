@@ -18,56 +18,52 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
+#include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
 
 #include <rerun/image_utils.hpp>
 
-#include <sensor_msgs/image_encodings.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 
 using std::placeholders::_1;
 
 namespace rerun_viz
 {
 
-Image::Image(
+TFMessage::TFMessage(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
 : rec_(rec), topic_name_(topic_name), node_(node)
 {
-  subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::Image>(
-    topic_name_, rclcpp::SensorDataQoS(), std::bind(&Image::topic_callback, this, _1));
+  subscription_ = node_->getRosNode()->create_subscription<tf2_msgs::msg::TFMessage>(
+    topic_name_, rclcpp::BestAvailableQoS(), std::bind(&TFMessage::topic_callback, this, _1));
 }
 
-void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
+void TFMessage::topic_callback(const tf2_msgs::msg::TFMessage::SharedPtr msg) const
 {
+  RCLCPP_INFO(node_->getRosNode()->get_logger(), "Got TF message!");
+
   if (!rec_) {
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "No valid RecordingStream, cannot visualize data.");
     return;
   }
 
-  if (msg->encoding == sensor_msgs::image_encodings::RGB8) {
+  for (const auto & tf_stamped : msg->transforms) {
+    RCLCPP_INFO(
+      node_->getRosNode()->get_logger(), "TF: %s -> %s", tf_stamped.header.frame_id.c_str(),
+      tf_stamped.child_frame_id.c_str());
+
     rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_rgb24(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::RGBA8) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_rgba32(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::MONO8) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_grayscale8(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image(
-        msg->data, rerun::WidthHeight(msg->width, msg->height), rerun::datatypes::ColorModel::L,
-        rerun::datatypes::ChannelDatatype::U16));
-  } else {
-    RCLCPP_WARN(
-      node_->getRosNode()->get_logger(), "Unsupported image encoding '%s' on topic %s",
-      msg->encoding.c_str(), topic_name_.c_str());
+      "TF/" + tf_stamped.header.frame_id + "/" + tf_stamped.child_frame_id,
+      rerun::Transform3D::from_translation({tf_stamped.transform.translation.x,
+                                            tf_stamped.transform.translation.y,
+                                            tf_stamped.transform.translation.z})
+        .with_relation(rerun::components::TransformRelation::ChildFromParent)
+        .with_axis_length(0.1f)
+        .with_quaternion(
+          rerun::datatypes::Quaternion::from_xyzw(
+            tf_stamped.transform.rotation.x, tf_stamped.transform.rotation.y,
+            tf_stamped.transform.rotation.z, tf_stamped.transform.rotation.w)));
   }
 }
 

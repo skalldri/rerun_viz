@@ -3,6 +3,7 @@
 #include <rerun_viz/msg_conversion/sensor_msgs/point_cloud2.hpp>
 #include <rerun_viz/msg_conversion/sensor_msgs/imu.hpp>
 #include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
+#include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
 
 namespace rerun_viz
 {
@@ -17,6 +18,8 @@ std::shared_ptr<rerun_viz::Converter> ConverterFactory::getConverterForRosTopic(
     return std::make_shared<rerun_viz::Imu>(node, topic, rec);
   } else if (msgType == "sensor_msgs/msg/Image") {
     return std::make_shared<rerun_viz::Image>(node, topic, rec);
+  } else if (msgType == "tf2_msgs/msg/TFMessage") {
+    return std::make_shared<rerun_viz::TFMessage>(node, topic, rec);
   }
 
   // Did not match any types
