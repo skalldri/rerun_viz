@@ -18,12 +18,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <gtest/gtest.h>
+#pragma once
 
-TEST(SimpleTest, BasicAssertions)
+#include <memory>
+
+#include <sensor_msgs/msg/image.hpp>
+#include <rerun.hpp>
+#include "rclcpp/rclcpp.hpp"
+
+#include <rerun_viz/node.hpp>
+#include <rerun_viz/msg_conversion/converter.hpp>
+
+namespace rerun_viz
 {
-  // Expect two strings to be equal.
-  EXPECT_STRNE("hello", "world");
-  // Expect equality.
-  EXPECT_EQ(7 * 6, 42);
-}
+
+class Image : public Converter
+{
+public:
+  Image(
+    std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
+    std::shared_ptr<rerun::RecordingStream> rec = nullptr);
+
+  void topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const;
+
+  const std::string getRosTypeName() override { return "sensor_msgs/msg/Image"; }
+
+private:
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+  std::shared_ptr<rerun_viz::Node> node_;
+  std::shared_ptr<rerun::RecordingStream> rec_;
+  std::string topic_name_;
+};
+
+}  // namespace rerun_viz

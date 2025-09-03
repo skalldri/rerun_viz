@@ -26,6 +26,7 @@
 #include <rerun.hpp>
 #include "rclcpp/rclcpp.hpp"
 
+#include <rerun_viz/node.hpp>
 #include <rerun_viz/msg_conversion/converter.hpp>
 
 namespace rerun_viz
@@ -35,7 +36,7 @@ class PointCloud2 : public Converter
 {
 public:
   PointCloud2(
-    rclcpp::Node::SharedPtr node, const std::string & topic_name,
+    std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
     std::shared_ptr<rerun::RecordingStream> rec = nullptr);
 
   static rerun::Points3D toRerunType(const sensor_msgs::msg::PointCloud2 & pc2_msg);
@@ -46,7 +47,7 @@ public:
 
 private:
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
-  rclcpp::Node::SharedPtr node_;
+  std::shared_ptr<rerun_viz::Node> node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;
 };

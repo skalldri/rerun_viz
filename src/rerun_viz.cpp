@@ -64,10 +64,12 @@ int main(int argc, char ** argv)
   rclcpp::init(argc, argv);
 
   // Must be constructed only after rclcpp::init()!
-  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(rec);
+  std::shared_ptr<rclcpp::Node> ros_node = std::make_shared<rclcpp::Node>("rerun_viz_node");
+  std::shared_ptr<rerun_viz::Node> rerun_viz_node =
+    std::make_shared<rerun_viz::Node>(rec, ros_node);
 
   rclcpp::executors::MultiThreadedExecutor executor;
-  executor.add_node(node);
+  executor.add_node(ros_node);
 
   executor.spin();
 

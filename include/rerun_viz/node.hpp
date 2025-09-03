@@ -1,7 +1,9 @@
+#pragma once
 
 #include "rclcpp/rclcpp.hpp"
-#include <rerun_viz/msg_conversion/converter.hpp>
 #include <rerun.hpp>
+
+#include <rerun_viz/msg_conversion/converter.hpp>
 
 #include <thread>
 #include <map>
@@ -12,21 +14,79 @@
 namespace rerun_viz
 {
 
-class Node : public rclcpp::Node
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
-  Node(std::shared_ptr<rerun::RecordingStream> rec);
+  /**
+   * @brief Construct a new Node object
+   * 
+   * @param rec a shared pointer to a RecordingStream, can be null
+   * @param node a shared pointer to an rclcpp::Node, must not be null
+   */
+  Node(std::shared_ptr<rerun::RecordingStream> rec, std::shared_ptr<rclcpp::Node> node);
+
   ~Node();
 
+  /**
+   * @brief Given a map of topic names to list of types on that topic, update our subscriptions
+   * such that we are subscribed to all topics on all supported types. This will internally cause 
+   * the creation and destruction of Converter instances as needed to match the current set of topics and datatypes.
+   * 
+   * @param topicNamesAndTypes 
+   */
   void updateSubscriptions(std::map<std::string, std::vector<std::string>> topicNamesAndTypes);
 
+  /**
+   * @brief Get the map current subcriptions, that maps subscribed topics -> list of datatypes on that topic.
+   * 
+   * @return const std::map<std::string, std::vector<std::string>> The mapping of topic names -> list of datatypes
+   * on that topic
+   */
   const std::map<std::string, std::vector<std::string>> getSubscriptions();
 
+  /**
+   * @brief Get a Converter for a given topic and type, if one exists. Returns an invalid shared pointer if 
+   * there is no registered Converter for that topic + type yet.
+   * 
+   * @param topic the topic name you want a converter for
+   * @param type the datatype on the topic you want a converter for 
+   * @return std::shared_ptr<Converter> the Converter for that topic and type, or an invalid shared pointer if none exists 
+   */
+  std::shared_ptr<Converter> getConverter(const std::string & topic, const std::string & type);
+
+  /**
+   * @brief Query the ROS node for the current list of topics and types, and then update our subscriptions
+   * 
+   */
   void getTopicsAndUpdateSubscriptions();
 
+  /**
+   * @brief Get the underlying ROS node object
+   * 
+   * @return std::shared_ptr<rclcpp::Node> 
+   */
+  std::shared_ptr<rclcpp::Node> getRosNode() { return node_; }
+
 private:
+  /**
+   * @brief Stop and join the graph update thread.
+   * 
+   */
   void stopAndJoinGraphUpdateThread();
+
+  /**
+   * @brief The entry point for the graph update thread. This will periodically query the ROS node
+   * for the current list of topics and types, and call updateSubscriptions() to ensure we are subscribed
+   * to all topics.
+   */
   void graphUpdateThread();
+
+  /**
+   * @brief Helper function that encapsulates the conditions that dictate if the graph update thread should keep running.
+   * 
+   * @return true keep running
+   * @return false quit at the next opportunity
+   */
   bool canGraphUpdateThreadRun();
 
   std::thread graph_update_thread_;
@@ -35,6 +95,7 @@ private:
   std::mutex subscriptions_mutex_;
   std::map<std::string, std::vector<std::shared_ptr<Converter>>> subscriptions_;
   std::shared_ptr<rerun::RecordingStream> rec_;
+  std::shared_ptr<rclcpp::Node> node_;
 };
 
 }  // namespace rerun_viz

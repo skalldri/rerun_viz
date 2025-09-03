@@ -18,23 +18,27 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <rerun_viz/msg_conversion/sensor_msgs/imu.hpp>
+#include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
+
+#include <rerun/image_utils.hpp>
+
+#include <sensor_msgs/image_encodings.hpp>
 
 using std::placeholders::_1;
 
 namespace rerun_viz
 {
 
-Imu::Imu(
+Image::Image(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
 : rec_(rec), topic_name_(topic_name), node_(node)
 {
-  subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::Imu>(
-    topic_name, rclcpp::SensorDataQoS(), std::bind(&Imu::topic_callback, this, _1));
+  subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::Image>(
+    topic_name_, rclcpp::SensorDataQoS(), std::bind(&Image::topic_callback, this, _1));
 }
 
-void Imu::topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const
+void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
 {
   if (!rec_) {
     RCLCPP_WARN(
@@ -42,31 +46,28 @@ void Imu::topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const
     return;
   }
 
-  // We need to check the first value of the covariance matrix for each element (orientation, angular_velocity, linear_acceleration)
-  // If that element is -1, then that element is not provided by the underlying sensor
-  // https://docs.ros.org/en/jazzy/p/sensor_msgs/msg/Imu.html
-
-  if (msg->angular_velocity_covariance[0] > -1.0) {
-    rec_->log(topic_name_ + "/Imu/angular_velocity/x", rerun::Scalars(msg->angular_velocity.x));
-    rec_->log(topic_name_ + "/Imu/angular_velocity/y", rerun::Scalars(msg->angular_velocity.y));
-    rec_->log(topic_name_ + "/Imu/angular_velocity/z", rerun::Scalars(msg->angular_velocity.z));
-  }
-
-  if (msg->linear_acceleration_covariance[0] > -1.0) {
+  if (msg->encoding == sensor_msgs::image_encodings::RGB8) {
     rec_->log(
-      topic_name_ + "/Imu/linear_acceleration/x", rerun::Scalars(msg->linear_acceleration.x));
+      topic_name_ + "/Image",
+      rerun::Image::from_rgb24(msg->data, rerun::WidthHeight(msg->width, msg->height)));
+  } else if (msg->encoding == sensor_msgs::image_encodings::RGBA8) {
     rec_->log(
-      topic_name_ + "/Imu/linear_acceleration/y", rerun::Scalars(msg->linear_acceleration.y));
+      topic_name_ + "/Image",
+      rerun::Image::from_rgba32(msg->data, rerun::WidthHeight(msg->width, msg->height)));
+  } else if (msg->encoding == sensor_msgs::image_encodings::MONO8) {
     rec_->log(
-      topic_name_ + "/Imu/linear_acceleration/z", rerun::Scalars(msg->linear_acceleration.z));
-  }
-
-  if (msg->orientation_covariance[0] > -1.0) {
+      topic_name_ + "/Image",
+      rerun::Image::from_greyscale8(msg->data, rerun::WidthHeight(msg->width, msg->height)));
+  } else if (msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1) {
     rec_->log(
-      topic_name_ + "/Imu/orientation",
-      rerun::Transform3D().with_axis_length(1.0).with_quaternion(
-        rerun::Quaternion().from_xyzw(
-          msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w)));
+      topic_name_ + "/Image",
+      rerun::Image(
+        msg->data, rerun::WidthHeight(msg->width, msg->height), rerun::datatypes::ColorModel::L,
+        rerun::datatypes::ChannelDatatype::U16));
+  } else {
+    RCLCPP_WARN(
+      node_->getRosNode()->get_logger(), "Unsupported image encoding '%s' on topic %s",
+      msg->encoding.c_str(), topic_name_.c_str());
   }
 }
 

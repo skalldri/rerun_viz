@@ -27,25 +27,22 @@ namespace rerun_viz
 {
 
 PointCloud2::PointCloud2(
-  rclcpp::Node::SharedPtr node, const std::string & topic_name,
+  std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
-: rec_(rec), topic_name_(topic_name)
+: rec_(rec), topic_name_(topic_name), node_(node)
 {
-  node_ = node;
-  subscription_ = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+  subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::PointCloud2>(
     topic_name, rclcpp::SensorDataQoS(), std::bind(&PointCloud2::topic_callback, this, _1));
 }
 
 void PointCloud2::topic_callback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) const
 {
-  rerun::Points3D points = toRerunType(*msg);
-
-  RCLCPP_INFO(node_->get_logger(), "Got a point cloud message!");
-
   if (rec_) {
+    rerun::Points3D points = toRerunType(*msg);
     rec_->log(topic_name_ + "/PointCloud2", points);
   } else {
-    RCLCPP_WARN(node_->get_logger(), "No valid RecordingStream, cannot visualize data.");
+    RCLCPP_WARN(
+      node_->getRosNode()->get_logger(), "No valid RecordingStream, cannot visualize data.");
   }
 }
 

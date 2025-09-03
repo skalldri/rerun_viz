@@ -26,6 +26,7 @@
 #include <rerun.hpp>
 #include "rclcpp/rclcpp.hpp"
 
+#include <rerun_viz/node.hpp>
 #include <rerun_viz/msg_conversion/converter.hpp>
 
 namespace rerun_viz
@@ -35,10 +36,8 @@ class Imu : public Converter
 {
 public:
   Imu(
-    rclcpp::Node::SharedPtr node, const std::string & topic_name,
+    std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
     std::shared_ptr<rerun::RecordingStream> rec = nullptr);
-
-  // static rerun::Points3D toRerunType(const sensor_msgs::msg::Imu & pc2_msg);
 
   void topic_callback(const sensor_msgs::msg::Imu::SharedPtr msg) const;
 
@@ -46,7 +45,7 @@ public:
 
 private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr subscription_;
-  rclcpp::Node::SharedPtr node_;
+  std::shared_ptr<rerun_viz::Node> node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;
 };

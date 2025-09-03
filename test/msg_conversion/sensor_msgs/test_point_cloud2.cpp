@@ -99,7 +99,8 @@ TEST(PointCloud2, TestConstruct)
     "/points", rclcpp::SensorDataQoS());
 
   auto listener_node = std::make_shared<rclcpp::Node>("listener_node");
-  rerun_viz::PointCloud2 node(listener_node, "/points");
+  auto rerun_viz_node = std::make_shared<rerun_viz::Node>(nullptr, listener_node);
+  rerun_viz::PointCloud2 node(rerun_viz_node, "/points");
 
   // Verify that `/points` has one subscriber
   EXPECT_EQ(publisher_node->count_subscribers("/points"), 1);

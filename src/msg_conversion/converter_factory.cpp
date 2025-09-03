@@ -2,18 +2,21 @@
 
 #include <rerun_viz/msg_conversion/sensor_msgs/point_cloud2.hpp>
 #include <rerun_viz/msg_conversion/sensor_msgs/imu.hpp>
+#include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
 
 namespace rerun_viz
 {
 
 std::shared_ptr<rerun_viz::Converter> ConverterFactory::getConverterForRosTopic(
-  rclcpp::Node::SharedPtr node, const std::string & topic, const std::string & msgType,
+  std::shared_ptr<rerun_viz::Node> node, const std::string & topic, const std::string & msgType,
   std::shared_ptr<rerun::RecordingStream> rec)
 {
   if (msgType == "sensor_msgs/msg/PointCloud2") {
     return std::make_shared<rerun_viz::PointCloud2>(node, topic, rec);
   } else if (msgType == "sensor_msgs/msg/Imu") {
     return std::make_shared<rerun_viz::Imu>(node, topic, rec);
+  } else if (msgType == "sensor_msgs/msg/Image") {
+    return std::make_shared<rerun_viz::Image>(node, topic, rec);
   }
 
   // Did not match any types

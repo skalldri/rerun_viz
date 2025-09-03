@@ -19,9 +19,11 @@ add_library(
   rerun_viz_lib
   STATIC
   src/node.cpp
+  src/utils.cpp
   src/msg_conversion/converter_factory.cpp
   src/msg_conversion/sensor_msgs/point_cloud2.cpp
   src/msg_conversion/sensor_msgs/imu.cpp
+  src/msg_conversion/sensor_msgs/image.cpp
 )
 target_include_directories(rerun_viz_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -64,7 +66,7 @@ if(BUILD_TESTING)
 
   ament_add_gmock(
     unit_tests
-    test/test_simple.cpp
+    test/test_utils.cpp
     test/test_node.cpp
     test/msg_conversion/sensor_msgs/test_point_cloud2.cpp
   )

@@ -45,7 +45,8 @@ public:
 
 TEST_F(NodeTestFixture, TestSubscriptionsUnsupportedMessageType)
 {
-  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr);
+  std::shared_ptr<rclcpp::Node> ros_node = std::make_shared<rclcpp::Node>("rerun_viz_node");
+  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr, ros_node);
 
   std::map<std::string, std::vector<std::string>> topicNamesAndTypes;
 
@@ -64,14 +65,15 @@ TEST_F(NodeTestFixture, TestSubscriptionsUnsupportedMessageType)
 
 TEST_F(NodeTestFixture, TestSubscriptions)
 {
-  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr);
+  std::shared_ptr<rclcpp::Node> ros_node = std::make_shared<rclcpp::Node>("rerun_viz_node");
+  std::shared_ptr<rerun_viz::Node> node = std::make_shared<rerun_viz::Node>(nullptr, ros_node);
 
   // Create a node to publish some fake topics
   auto publisher_node = std::make_shared<rclcpp::Node>("publisher_node");
 
   rclcpp::executors::SingleThreadedExecutor executor;
 
-  executor.add_node(node);
+  executor.add_node(ros_node);
   executor.add_node(publisher_node);
   executor.spin_once();
 
