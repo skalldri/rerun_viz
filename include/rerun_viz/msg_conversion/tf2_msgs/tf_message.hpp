@@ -28,6 +28,7 @@
 
 #include <rerun_viz/node.hpp>
 #include <rerun_viz/msg_conversion/converter.hpp>
+#include <rerun_viz/tf_graph.hpp>
 
 namespace rerun_viz
 {
@@ -43,11 +44,18 @@ public:
 
   const std::string getRosTypeName() override { return "tf2_msgs/msg/TFMessage"; }
 
+  /// Get the current TF graph
+  const TFGraph & getTFGraph() const { return tf_graph_; }
+
+  /// Get statistics about the TF graph
+  std::pair<size_t, size_t> getGraphStatistics() const { return tf_graph_.getStatistics(); }
+
 private:
   rclcpp::Subscription<tf2_msgs::msg::TFMessage>::SharedPtr subscription_;
   std::shared_ptr<rerun_viz::Node> node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;
+  mutable TFGraph tf_graph_;  // mutable because topic_callback is const
 };
 
 }  // namespace rerun_viz

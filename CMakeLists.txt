@@ -22,6 +22,7 @@ add_library(
   STATIC
   src/node.cpp
   src/utils.cpp
+  src/tf_graph.cpp
   src/msg_conversion/converter_factory.cpp
   src/msg_conversion/sensor_msgs/point_cloud2.cpp
   src/msg_conversion/sensor_msgs/imu.cpp
@@ -73,6 +74,7 @@ if(BUILD_TESTING)
     unit_tests
     test/test_utils.cpp
     test/test_node.cpp
+    test/test_tf_graph.cpp
     test/msg_conversion/sensor_msgs/test_point_cloud2.cpp
   )
 

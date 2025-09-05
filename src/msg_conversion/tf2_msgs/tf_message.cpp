@@ -32,7 +32,7 @@ namespace rerun_viz
 TFMessage::TFMessage(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
-: rec_(rec), topic_name_(topic_name), node_(node)
+: node_(node), rec_(rec), topic_name_(topic_name)
 {
   subscription_ = node_->getRosNode()->create_subscription<tf2_msgs::msg::TFMessage>(
     topic_name_, rclcpp::BestAvailableQoS(), std::bind(&TFMessage::topic_callback, this, _1));
@@ -40,7 +40,9 @@ TFMessage::TFMessage(
 
 void TFMessage::topic_callback(const tf2_msgs::msg::TFMessage::SharedPtr msg) const
 {
-  RCLCPP_INFO(node_->getRosNode()->get_logger(), "Got TF message!");
+  RCLCPP_INFO(
+    node_->getRosNode()->get_logger(), "Got TF message with %zu transforms!",
+    msg->transforms.size());
 
   if (!rec_) {
     RCLCPP_WARN(
@@ -48,23 +50,35 @@ void TFMessage::topic_callback(const tf2_msgs::msg::TFMessage::SharedPtr msg) co
     return;
   }
 
+  // Process each transform in the message
   for (const auto & tf_stamped : msg->transforms) {
-    RCLCPP_INFO(
-      node_->getRosNode()->get_logger(), "TF: %s -> %s", tf_stamped.header.frame_id.c_str(),
-      tf_stamped.child_frame_id.c_str());
+    const std::string & parent = tf_stamped.header.frame_id;
+    const std::string & child = tf_stamped.child_frame_id;
 
-    rec_->log(
-      "TF/" + tf_stamped.header.frame_id + "/" + tf_stamped.child_frame_id,
-      rerun::Transform3D::from_translation({tf_stamped.transform.translation.x,
-                                            tf_stamped.transform.translation.y,
-                                            tf_stamped.transform.translation.z})
-        .with_relation(rerun::components::TransformRelation::ChildFromParent)
-        .with_axis_length(0.1f)
-        .with_quaternion(
-          rerun::datatypes::Quaternion::from_xyzw(
-            tf_stamped.transform.rotation.x, tf_stamped.transform.rotation.y,
-            tf_stamped.transform.rotation.z, tf_stamped.transform.rotation.w)));
+    RCLCPP_DEBUG(
+      node_->getRosNode()->get_logger(), "Processing TF: %s -> %s", parent.c_str(), child.c_str());
+
+    // Add transform to the graph
+    bool added = tf_graph_.addTransform(tf_stamped);
+    if (!added) {
+      RCLCPP_WARN(
+        node_->getRosNode()->get_logger(), "Failed to add transform %s -> %s (would create cycle)",
+        parent.c_str(), child.c_str());
+      continue;
+    }
+
+    RCLCPP_DEBUG(
+      node_->getRosNode()->get_logger(), "Added TF: %s -> %s", parent.c_str(), child.c_str());
   }
+
+  // Log the entire TF tree to Rerun
+  tf_graph_.logToRerun(rec_);
+
+  // Log statistics periodically
+  auto [num_frames, num_transforms] = tf_graph_.getStatistics();
+  RCLCPP_DEBUG(
+    node_->getRosNode()->get_logger(), "TF Graph now contains %zu frames and %zu transforms",
+    num_frames, num_transforms);
 }
 
 }  // namespace rerun_viz
