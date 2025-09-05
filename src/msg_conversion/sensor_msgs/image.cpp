@@ -24,6 +24,8 @@
 
 #include <sensor_msgs/image_encodings.hpp>
 
+#include <rerun_viz/utils.hpp>
+
 using std::placeholders::_1;
 
 namespace rerun_viz
@@ -44,6 +46,27 @@ void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "No valid RecordingStream, cannot visualize data.");
     return;
+  }
+
+  try {
+    std::string cameraNamespace = rerun_viz::getCameraNamespaceFromTopic(topic_name_);
+
+    auto subs = node_->getSubscriptions();
+
+    if (subs.find(cameraNamespace + "/camera_info") == subs.end()) {
+      RCLCPP_INFO(
+        node_->getRosNode()->get_logger(), "No /camera_info under %s", cameraNamespace.c_str());
+    } else {
+      RCLCPP_INFO(
+        node_->getRosNode()->get_logger(), "Found /camera_info under %s", cameraNamespace.c_str());
+    }
+
+    // Check that it's a
+
+  } catch (const std::exception & e) {
+    RCLCPP_WARN(
+      node_->getRosNode()->get_logger(), "Failed to get camera namespace from topic %s: %s",
+      topic_name_.c_str(), e.what());
   }
 
   if (msg->encoding == sensor_msgs::image_encodings::RGB8) {

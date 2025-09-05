@@ -27,6 +27,7 @@ add_library(
   src/msg_conversion/sensor_msgs/point_cloud2.cpp
   src/msg_conversion/sensor_msgs/imu.cpp
   src/msg_conversion/sensor_msgs/image.cpp
+  src/msg_conversion/sensor_msgs/camera_info.cpp
   src/msg_conversion/tf2_msgs/tf_message.cpp
 )
 target_include_directories(rerun_viz_lib PUBLIC
@@ -76,6 +77,7 @@ if(BUILD_TESTING)
     test/test_node.cpp
     test/test_tf_graph.cpp
     test/msg_conversion/sensor_msgs/test_point_cloud2.cpp
+    test/msg_conversion/sensor_msgs/test_camera_info.cpp
   )
 
   target_link_libraries(unit_tests rerun_viz_lib)
