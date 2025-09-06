@@ -11,6 +11,11 @@
 #include <mutex>
 #include <atomic>
 
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2_ros/transform_listener.hpp>
+#include <tf2_ros/buffer.hpp>
+#include <tf2/time.hpp>
+
 namespace rerun_viz
 {
 
@@ -67,6 +72,19 @@ public:
    */
   std::shared_ptr<rclcpp::Node> getRosNode() { return node_; }
 
+  /**
+   * @brief Return the TF Frame ID that is used as the "fixed" frame in the world co-ordinate system.
+   * 
+   * All other TFs will be submitted relative to this frame
+   * 
+   * @return std::string the fixed frame ID, currently hardcoded. Will make this a rosparam at some point
+   */
+  std::string getFixedFrameId() { return "loomo_odom"; }
+
+  geometry_msgs::msg::TransformStamped lookupTransform(
+    const std::string & target_frame, const std::string & source_frame,
+    const tf2::TimePoint & time);
+
 private:
   /**
    * @brief Stop and join the graph update thread.
@@ -96,6 +114,8 @@ private:
   std::map<std::string, std::vector<std::shared_ptr<Converter>>> subscriptions_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::shared_ptr<rclcpp::Node> node_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 };
 
 }  // namespace rerun_viz

@@ -75,4 +75,16 @@ bool isInNamespace(const std::string & topic, const std::string & ns)
   return false;
 }
 
+// Helper function to convert a geometry_msgs Transform to rerun Transform3D
+rerun::Transform3D convertTransformToRerun(const geometry_msgs::msg::Transform & tf)
+{
+  return rerun::Transform3D::from_translation({static_cast<float>(tf.translation.x),
+                                               static_cast<float>(tf.translation.y),
+                                               static_cast<float>(tf.translation.z)})
+    .with_quaternion(
+      rerun::datatypes::Quaternion::from_xyzw(
+        tf.rotation.x, tf.rotation.y, tf.rotation.z, tf.rotation.w))
+    .with_relation(rerun::components::TransformRelation::ParentFromChild);
+}
+
 }  // namespace rerun_viz

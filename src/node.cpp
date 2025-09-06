@@ -16,6 +16,11 @@ Node::Node(std::shared_ptr<rerun::RecordingStream> rec, std::shared_ptr<rclcpp::
 {
   RCLCPP_INFO(node_->get_logger(), "Rerun Viz Node has been started.");
 
+  if (node_) {
+    tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_);
+  }
+
   graph_update_thread_ = std::thread(std::bind(&Node::graphUpdateThread, this));
 }
 
@@ -310,6 +315,12 @@ void Node::graphUpdateThread()
 
     getTopicsAndUpdateSubscriptions();
   }
+}
+
+geometry_msgs::msg::TransformStamped Node::lookupTransform(
+  const std::string & target_frame, const std::string & source_frame, const tf2::TimePoint & time)
+{
+  return tf_buffer_->lookupTransform(target_frame, source_frame, time);
 }
 
 }  // namespace rerun_viz

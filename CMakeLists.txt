@@ -13,6 +13,7 @@ find_package(rerun_sdk REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 
@@ -29,6 +30,7 @@ add_library(
   src/msg_conversion/sensor_msgs/image.cpp
   src/msg_conversion/sensor_msgs/camera_info.cpp
   src/msg_conversion/tf2_msgs/tf_message.cpp
+  src/msg_conversion/special_msgs/robot_description.cpp
 )
 target_include_directories(rerun_viz_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -36,6 +38,7 @@ target_include_directories(rerun_viz_lib PUBLIC
 
 ament_target_dependencies(rerun_viz_lib sensor_msgs)
 ament_target_dependencies(rerun_viz_lib tf2_msgs)
+ament_target_dependencies(rerun_viz_lib tf2_ros)
 ament_target_dependencies(rerun_viz_lib geometry_msgs)
 ament_target_dependencies(rerun_viz_lib rclcpp)
 target_link_libraries(rerun_viz_lib rerun_sdk)

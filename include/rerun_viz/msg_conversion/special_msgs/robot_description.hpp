@@ -22,8 +22,7 @@
 
 #include <memory>
 
-#include <geometry_msgs/msg/transform.hpp>
-#include <sensor_msgs/msg/camera_info.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <rerun.hpp>
 #include "rclcpp/rclcpp.hpp"
 
@@ -33,22 +32,19 @@
 namespace rerun_viz
 {
 
-// Helper function to convert a geometry_msgs Transform to rerun Transform3D
-rerun::Transform3D convertTransformToRerun(const geometry_msgs::msg::Transform & tf);
-
-class CameraInfo : public Converter
+class RobotDescription : public Converter
 {
 public:
-  CameraInfo(
+  RobotDescription(
     std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
     std::shared_ptr<rerun::RecordingStream> rec = nullptr);
 
-  void topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) const;
+  void topic_callback(const std_msgs::msg::String::SharedPtr msg) const;
 
-  const std::string getRosTypeName() override { return "sensor_msgs/msg/CameraInfo"; }
+  const std::string getRosTypeName() override { return "std_msgs/msg/String"; }
 
 private:
-  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr subscription_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
   std::shared_ptr<rerun_viz::Node> node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;

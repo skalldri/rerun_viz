@@ -5,6 +5,7 @@
 #include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
 #include <rerun_viz/msg_conversion/sensor_msgs/camera_info.hpp>
 #include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
+#include <rerun_viz/msg_conversion/special_msgs/robot_description.hpp>
 
 namespace rerun_viz
 {
@@ -13,6 +14,11 @@ std::shared_ptr<rerun_viz::Converter> ConverterFactory::getConverterForRosTopic(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic, const std::string & msgType,
   std::shared_ptr<rerun::RecordingStream> rec)
 {
+  // Special cases
+  if (msgType == "std_msgs/msg/String" && topic.find("robot_description") != std::string::npos) {
+    return std::make_shared<rerun_viz::RobotDescription>(node, topic, rec);
+  }
+
   if (msgType == "sensor_msgs/msg/PointCloud2") {
     return std::make_shared<rerun_viz::PointCloud2>(node, topic, rec);
   } else if (msgType == "sensor_msgs/msg/Imu") {

@@ -19,8 +19,10 @@
 // THE SOFTWARE.
 
 #include <rerun_viz/msg_conversion/sensor_msgs/camera_info.hpp>
-
+#include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
 #include <rerun_viz/utils.hpp>
+
+#include <tf2/time.hpp>
 
 using std::placeholders::_1;
 
@@ -56,6 +58,13 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
       return;
     }
 
+    // TODO: fix timestamping
+    geometry_msgs::msg::TransformStamped t = node_->lookupTransform(
+      node_->getFixedFrameId(), msg->header.frame_id, tf2::TimePointZero /*msg->header.stamp*/);
+
+    // Try to get the TF transform for the camera frame
+    std::optional<rerun::Transform3D> camera_transform = convertTransformToRerun(t.transform);
+
     // Extract camera intrinsics from K matrix
     // K = [fx  0 cx]
     //     [ 0 fy cy]
@@ -85,15 +94,22 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
     auto resolution = rerun::components::Resolution(
       std::array<float, 2>{static_cast<float>(msg->width), static_cast<float>(msg->height)});
 
-    // Log the pinhole camera model to Rerun
-    rec_->log(
-      cameraNamespace,
+    // Create the pinhole archetype
+    auto pinhole =
       rerun::archetypes::Pinhole()
         .with_image_from_camera(pinhole_projection)
         .with_resolution(resolution)
         .with_camera_xyz(
           rerun::components::ViewCoordinates::RDF)  // ROS standard: X=Right, Y=Down, Z=Forward
-    );
+        .with_image_plane_distance(1.0);
+
+    // If we have a transform, log it along with the pinhole
+    if (camera_transform.has_value()) {
+      rec_->log(cameraNamespace, camera_transform.value());
+    }
+
+    // Log the pinhole camera model to Rerun
+    rec_->log(cameraNamespace, pinhole);
 
     RCLCPP_DEBUG(
       node_->getRosNode()->get_logger(),

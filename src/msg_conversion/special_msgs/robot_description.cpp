@@ -18,29 +18,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <rerun_viz/msg_conversion/sensor_msgs/image.hpp>
-
-#include <rerun/image_utils.hpp>
-
-#include <sensor_msgs/image_encodings.hpp>
-
-#include <rerun_viz/utils.hpp>
+#include <rerun_viz/msg_conversion/special_msgs/robot_description.hpp>
+#include <cstddef>
 
 using std::placeholders::_1;
 
 namespace rerun_viz
 {
 
-Image::Image(
+RobotDescription::RobotDescription(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
 : node_(node), rec_(rec), topic_name_(topic_name)
 {
-  subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::Image>(
-    topic_name_, rclcpp::SensorDataQoS(), std::bind(&Image::topic_callback, this, _1));
+  subscription_ = node_->getRosNode()->create_subscription<std_msgs::msg::String>(
+    topic_name_, rclcpp::BestAvailableQoS(),
+    std::bind(&RobotDescription::topic_callback, this, _1));
 }
 
-void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
+void RobotDescription::topic_callback(const std_msgs::msg::String::SharedPtr msg) const
 {
   if (!rec_) {
     RCLCPP_WARN(
@@ -48,28 +44,15 @@ void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
     return;
   }
 
-  if (msg->encoding == sensor_msgs::image_encodings::RGB8) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_rgb24(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::RGBA8) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_rgba32(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::MONO8) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image::from_grayscale8(msg->data, rerun::WidthHeight(msg->width, msg->height)));
-  } else if (msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image(
-        msg->data, rerun::WidthHeight(msg->width, msg->height), rerun::datatypes::ColorModel::L,
-        rerun::datatypes::ChannelDatatype::U16));
-  } else {
-    RCLCPP_WARN(
-      node_->getRosNode()->get_logger(), "Unsupported image encoding '%s' on topic %s",
-      msg->encoding.c_str(), topic_name_.c_str());
+  rec_->log(topic_name_ + "/RobotDescription", rerun::TextDocument(msg->data));
+
+  try {
+    rec_->log_file_from_contents(
+      "robot.urdf", reinterpret_cast<const std::byte *>(msg->data.c_str()),
+      std::strlen(msg->data.c_str()), topic_name_ + "/RobotDescription");
+  } catch (const std::exception & e) {
+    RCLCPP_ERROR(
+      node_->getRosNode()->get_logger(), "Failed to log robot description: %s", e.what());
   }
 }
 

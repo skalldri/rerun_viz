@@ -22,7 +22,10 @@
 #include <gmock/gmock.h>
 
 #include <rerun_viz/msg_conversion/sensor_msgs/camera_info.hpp>
+#include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <tf2_msgs/msg/tf_message.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rerun_viz/node.hpp>
 
@@ -217,4 +220,41 @@ TEST_F(CameraInfoTest, TestCallbackOffCenterPrincipalPoint)
   auto msg_outside = std::make_shared<sensor_msgs::msg::CameraInfo>(
     createCameraInfoMsg(640, 480, 525.0, 525.0, 1000.0, 1000.0));
   EXPECT_NO_THROW(converter.topic_callback(msg_outside));
+}
+
+// Test with TF integration
+TEST_F(CameraInfoTest, TestCallbackWithTFIntegration)
+{
+  auto rec = std::make_shared<rerun::RecordingStream>("test", "test");
+
+  // Create TF converter first to populate the TF graph
+  auto tf_converter = rerun_viz::TFMessage(node_, "/tf", rec);
+
+  // Create a TF message with camera frame transform
+  auto tf_msg = std::make_shared<tf2_msgs::msg::TFMessage>();
+  geometry_msgs::msg::TransformStamped tf_stamped;
+  tf_stamped.header.stamp = rclcpp::Time(123, 456789);
+  tf_stamped.header.frame_id = "base_link";
+  tf_stamped.child_frame_id = "camera_optical_frame";
+  tf_stamped.transform.translation.x = 1.0;
+  tf_stamped.transform.translation.y = 0.5;
+  tf_stamped.transform.translation.z = 0.2;
+  tf_stamped.transform.rotation.x = 0.0;
+  tf_stamped.transform.rotation.y = 0.0;
+  tf_stamped.transform.rotation.z = 0.0;
+  tf_stamped.transform.rotation.w = 1.0;
+  tf_msg->transforms.push_back(tf_stamped);
+
+  // Feed the TF data to build the graph
+  tf_converter.topic_callback(tf_msg);
+
+  // Now create camera info converter
+  auto camera_converter = rerun_viz::CameraInfo(node_, "/camera/camera_info", rec);
+
+  // Create camera info message with matching frame_id
+  auto camera_msg = std::make_shared<sensor_msgs::msg::CameraInfo>(createCameraInfoMsg());
+  camera_msg->header.frame_id = "camera_optical_frame";
+
+  // Should handle TF integration without throwing
+  EXPECT_NO_THROW(camera_converter.topic_callback(camera_msg));
 }
