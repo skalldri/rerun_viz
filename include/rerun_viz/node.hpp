@@ -34,6 +34,8 @@ public:
 
   void on_timer();
 
+  void handleTfRequest(const TFRequest & req);
+
   /**
    * @brief Given a map of topic names to list of types on that topic, update our subscriptions
    * such that we are subscribed to all topics on all supported types. This will internally cause 

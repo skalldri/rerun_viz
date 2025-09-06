@@ -28,45 +28,46 @@ Node::Node(std::shared_ptr<rerun::RecordingStream> rec, std::shared_ptr<rclcpp::
   graph_update_thread_ = std::thread(std::bind(&Node::graphUpdateThread, this));
 }
 
+void Node::handleTfRequest(const TFRequest & req)
+{
+  // Another beautiful hack...
+  auto tf =
+    (req.tf_type == TFRequestType::RotationOnly)
+      ? convertTransformToRerun(
+          lookupTransform(req.ros_parent_frame_id, req.ros_child_frame_id, tf2::TimePointZero))
+          .with_translation({0.0, 0.0, 0.0})
+      : convertTransformToRerun(
+          lookupTransform(req.ros_parent_frame_id, req.ros_child_frame_id, tf2::TimePointZero));
+
+  rec_->log(req.rerun_entity_path, tf);
+}
+
 void Node::on_timer()
 {
   if (tf_buffer_) {
-    auto frames = tf_buffer_->getAllFrameNames();
-    for (const auto & f : frames) {
-      RCLCPP_INFO(node_->get_logger(), "TF Frame: %s", f.c_str());
-    }
+    std::lock_guard<std::mutex> lock(subscriptions_mutex_);
 
-    // TODO: this is a massive hack.
-    // We need a way to extract the set of required frames from the current set of subscriptions,
-    // and then publish the graph of TFs that are needed to cover those frames.
-    // I think we probably need to resurrect the "TFMessage" converter to maintain the set of
-    // frames as a hierarchy, but farm out to the core TF2 library to perform the actual transform conversions.
-    //
-    // Wrapping everything in the TF buffer makes it all too abstract.
+    // Check all our converters to see if they have any requests for the TF graph.
+    // Publish Transform3Ds to any Rerun entity requested by the converters.
+    for (const auto & [topic_name, converters] : subscriptions_) {
+      for (const auto & converter : converters) {
+        const auto tf_requests = converter->getTfRequests();
 
-    // As a proof of concept, let's publish the known TF graph from the robot
-    try {
-      // Lets just see if this works...
-      const auto fixedFrame = getFixedFrameId();
-
-      auto tf =
-        convertTransformToRerun(lookupTransform(fixedFrame, "base_link", tf2::TimePointZero));
-      rec_->log("/loomo/base_link", tf);
-
-      // Strip the translation component off these joints: we only need the rotation component,
-      // the translation is captured by the "joint" that is produced by ReRun's URDF loader
-      tf =
-        convertTransformToRerun(lookupTransform("base_link", "head_yaw_link", tf2::TimePointZero))
-          .with_translation({0.0, 0.0, 0.0});
-      rec_->log("/loomo/base_link/neck_yaw_joint/head_yaw_link", tf);
-
-      tf = convertTransformToRerun(
-             lookupTransform("head_yaw_link", "head_pitch_link", tf2::TimePointZero))
-             .with_translation({0.0, 0.0, 0.0});
-      rec_->log(
-        "/loomo/base_link/neck_yaw_joint/head_yaw_link/head_pitch_joint/head_pitch_link", tf);
-    } catch (const std::exception & e) {
-      RCLCPP_WARN(node_->get_logger(), "Failed to lookup TF: %s", e.what());
+        for (const auto & req : tf_requests) {
+          RCLCPP_DEBUG(
+            node_->get_logger(), "Handling TF request for %s -> %s at ReRun path %s",
+            req.ros_parent_frame_id.c_str(), req.ros_child_frame_id.c_str(),
+            req.rerun_entity_path.c_str());
+          try {
+            handleTfRequest(req);
+          } catch (const std::exception & e) {
+            RCLCPP_WARN(
+              node_->get_logger(), "Failed to lookup TF %s -> %s for rerun entity %s: %s",
+              req.ros_parent_frame_id.c_str(), req.ros_child_frame_id.c_str(),
+              req.rerun_entity_path.c_str(), e.what());
+          }
+        }
+      }
     }
   }
 }

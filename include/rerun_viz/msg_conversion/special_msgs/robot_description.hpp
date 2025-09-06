@@ -21,6 +21,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 
 #include <std_msgs/msg/string.hpp>
 #include <rerun.hpp>
@@ -28,6 +29,7 @@
 
 #include <rerun_viz/node.hpp>
 #include <rerun_viz/msg_conversion/converter.hpp>
+#include <urdf/model.h>
 
 namespace rerun_viz
 {
@@ -39,15 +41,24 @@ public:
     std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
     std::shared_ptr<rerun::RecordingStream> rec = nullptr);
 
-  void topic_callback(const std_msgs::msg::String::SharedPtr msg) const;
+  void topic_callback(const std_msgs::msg::String::SharedPtr msg);
 
   const std::string getRosTypeName() override { return "std_msgs/msg/String"; }
+
+  virtual const std::vector<TFRequest> getTfRequests() override;
+
+  void urdfDepthFirst(urdf::Model & model, std::string root, urdf::JointConstSharedPtr joint);
+
+  void urdfDepthFirst(urdf::Model & model, std::string root, urdf::LinkConstSharedPtr link);
 
 private:
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
   std::shared_ptr<rerun_viz::Node> node_;
   std::shared_ptr<rerun::RecordingStream> rec_;
   std::string topic_name_;
+
+  std::recursive_mutex tf_requests_mutex_;
+  std::vector<TFRequest> tf_requests_;
 };
 
 }  // namespace rerun_viz

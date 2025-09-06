@@ -29,7 +29,7 @@ namespace rerun_viz
 PointCloud2::PointCloud2(
   std::shared_ptr<rerun_viz::Node> node, const std::string & topic_name,
   std::shared_ptr<rerun::RecordingStream> rec)
-: rec_(rec), topic_name_(topic_name), node_(node)
+: node_(node), rec_(rec), topic_name_(topic_name)
 {
   subscription_ = node_->getRosNode()->create_subscription<sensor_msgs::msg::PointCloud2>(
     topic_name, rclcpp::SensorDataQoS(), std::bind(&PointCloud2::topic_callback, this, _1));
