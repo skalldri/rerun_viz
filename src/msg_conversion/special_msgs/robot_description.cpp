@@ -19,6 +19,7 @@
 // THE SOFTWARE.
 
 #include <rerun_viz/msg_conversion/special_msgs/robot_description.hpp>
+#include <rerun_viz/utils.hpp>
 #include <cstddef>
 
 using std::placeholders::_1;
@@ -50,6 +51,14 @@ void RobotDescription::topic_callback(const std_msgs::msg::String::SharedPtr msg
     rec_->log_file_from_contents(
       "robot.urdf", reinterpret_cast<const std::byte *>(msg->data.c_str()),
       std::strlen(msg->data.c_str()), topic_name_ + "/RobotDescription");
+
+    // Lets just see if this works...
+    const auto fixedFrame = node_->getFixedFrameId();
+
+    auto tf =
+      convertTransformToRerun(node_->lookupTransform(fixedFrame, "base_link", tf2::TimePointZero));
+    rec_->log("/loomo/base_link", tf);
+
   } catch (const std::exception & e) {
     RCLCPP_ERROR(
       node_->getRosNode()->get_logger(), "Failed to log robot description: %s", e.what());

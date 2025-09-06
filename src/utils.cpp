@@ -76,6 +76,12 @@ bool isInNamespace(const std::string & topic, const std::string & ns)
 }
 
 // Helper function to convert a geometry_msgs Transform to rerun Transform3D
+rerun::Transform3D convertTransformToRerun(const geometry_msgs::msg::TransformStamped & tf)
+{
+  return convertTransformToRerun(tf.transform);
+}
+
+// Helper function to convert a geometry_msgs Transform to rerun Transform3D
 rerun::Transform3D convertTransformToRerun(const geometry_msgs::msg::Transform & tf)
 {
   return rerun::Transform3D::from_translation({static_cast<float>(tf.translation.x),

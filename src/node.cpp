@@ -1,5 +1,6 @@
 
 #include <rerun_viz/node.hpp>
+#include <rerun_viz/utils.hpp>
 #include <rerun_viz/msg_conversion/converter_factory.hpp>
 
 #include <chrono>
@@ -18,10 +19,56 @@ Node::Node(std::shared_ptr<rerun::RecordingStream> rec, std::shared_ptr<rclcpp::
 
   if (node_) {
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
-    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_);
+    tf_listener_ =
+      std::make_shared<tf2_ros::TransformListener>(*tf_buffer_, node_, true /* spin thread */);
+
+    timer_ = node_->create_wall_timer(0.1s, [this]() { return this->on_timer(); });
   }
 
   graph_update_thread_ = std::thread(std::bind(&Node::graphUpdateThread, this));
+}
+
+void Node::on_timer()
+{
+  if (tf_buffer_) {
+    auto frames = tf_buffer_->getAllFrameNames();
+    for (const auto & f : frames) {
+      RCLCPP_INFO(node_->get_logger(), "TF Frame: %s", f.c_str());
+    }
+
+    // TODO: this is a massive hack.
+    // We need a way to extract the set of required frames from the current set of subscriptions,
+    // and then publish the graph of TFs that are needed to cover those frames.
+    // I think we probably need to resurrect the "TFMessage" converter to maintain the set of
+    // frames as a hierarchy, but farm out to the core TF2 library to perform the actual transform conversions.
+    //
+    // Wrapping everything in the TF buffer makes it all too abstract.
+
+    // As a proof of concept, let's publish the known TF graph from the robot
+    try {
+      // Lets just see if this works...
+      const auto fixedFrame = getFixedFrameId();
+
+      auto tf =
+        convertTransformToRerun(lookupTransform(fixedFrame, "base_link", tf2::TimePointZero));
+      rec_->log("/loomo/base_link", tf);
+
+      // Strip the translation component off these joints: we only need the rotation component,
+      // the translation is captured by the "joint" that is produced by ReRun's URDF loader
+      tf =
+        convertTransformToRerun(lookupTransform("base_link", "head_yaw_link", tf2::TimePointZero))
+          .with_translation({0.0, 0.0, 0.0});
+      rec_->log("/loomo/base_link/neck_yaw_joint/head_yaw_link", tf);
+
+      tf = convertTransformToRerun(
+             lookupTransform("head_yaw_link", "head_pitch_link", tf2::TimePointZero))
+             .with_translation({0.0, 0.0, 0.0});
+      rec_->log(
+        "/loomo/base_link/neck_yaw_joint/head_yaw_link/head_pitch_joint/head_pitch_link", tf);
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(node_->get_logger(), "Failed to lookup TF: %s", e.what());
+    }
+  }
 }
 
 Node::~Node()
@@ -198,24 +245,20 @@ void Node::updateSubscriptions(std::map<std::string, std::vector<std::string>> t
     // The topic is not in our list of existing subscriptions, so add new subscriptions for
     // all possible datatypes
     if (subscriptions_.find(topic_name) == subscriptions_.end()) {
-      RCLCPP_INFO(node_->get_logger(), "Adding subscription to topic: %s", topic_name.c_str());
-
       std::vector<std::shared_ptr<Converter>> converters_for_topic;
-
       // Try to add a converter for each datatype
       for (const auto & type : type_list) {
         try {
           auto converter =
             ConverterFactory::getConverterForRosTopic(shared_this, topic_name, type, rec_);
           converters_for_topic.push_back(converter);
+          RCLCPP_INFO(
+            node_->get_logger(), "Added subscription to topic: %s for type %s", topic_name.c_str(),
+            type.c_str());
         } catch (const std::runtime_error & e) {
-          try {
-            RCLCPP_WARN(
-              node_->get_logger(), "Cannot subscribe to topic %s with type %s: %s",
-              topic_name.c_str(), type.c_str(), e.what());
-          } catch (const std::bad_weak_ptr & wp) {
-            std::cout << "Failure during ROS logging" << std::endl;
-          }
+          RCLCPP_WARN(
+            node_->get_logger(), "Cannot subscribe to topic %s with type %s: %s",
+            topic_name.c_str(), type.c_str(), e.what());
         }
       }
 

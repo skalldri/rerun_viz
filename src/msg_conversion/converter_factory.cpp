@@ -27,9 +27,9 @@ std::shared_ptr<rerun_viz::Converter> ConverterFactory::getConverterForRosTopic(
     return std::make_shared<rerun_viz::Image>(node, topic, rec);
   } else if (msgType == "sensor_msgs/msg/CameraInfo") {
     return std::make_shared<rerun_viz::CameraInfo>(node, topic, rec);
-  } else if (msgType == "tf2_msgs/msg/TFMessage") {
+  } /* else if (msgType == "tf2_msgs/msg/TFMessage") {
     return std::make_shared<rerun_viz::TFMessage>(node, topic, rec);
-  }
+  } */
 
   // Did not match any types
   throw std::runtime_error("Unsupported ROS message type: " + msgType);

@@ -32,6 +32,8 @@ public:
 
   ~Node();
 
+  void on_timer();
+
   /**
    * @brief Given a map of topic names to list of types on that topic, update our subscriptions
    * such that we are subscribed to all topics on all supported types. This will internally cause 
@@ -116,6 +118,7 @@ private:
   std::shared_ptr<rclcpp::Node> node_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  rclcpp::TimerBase::SharedPtr timer_;
 };
 
 }  // namespace rerun_viz
