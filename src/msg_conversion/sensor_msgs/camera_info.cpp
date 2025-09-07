@@ -89,22 +89,29 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
     auto resolution = rerun::components::Resolution(
       std::array<float, 2>{static_cast<float>(msg->width), static_cast<float>(msg->height)});
 
-    // Create the pinhole archetype
-    auto pinhole =
-      rerun::archetypes::Pinhole()
-        .with_image_from_camera(pinhole_projection)
-        .with_resolution(resolution)
-        .with_camera_xyz(
-          rerun::components::ViewCoordinates::RDF)  // ROS standard: X=Right, Y=Down, Z=Forward
-        .with_image_plane_distance(1.0);
+    // TODO: this is a disgusting hack. Need a better way to tell when a topic should be a depth image.
+    if (topic_name_.find("depth") != std::string::npos) {
+      auto pinhole =
+        rerun::Pinhole::from_focal_length_and_resolution(
+          {static_cast<float>(cam_model.fx()), static_cast<float>(cam_model.fy())}, resolution)
+          .with_image_plane_distance(1.0);
 
-    // Log the pinhole camera model to Rerun
-    rec_->log(entityPath, pinhole);
+      // Log the pinhole camera model to Rerun
+      rec_->log(entityPath, pinhole);
+    } else {
+      // Create the pinhole archetype
+      auto pinhole =
+        rerun::Pinhole()
+          .with_image_from_camera(pinhole_projection)
+          .with_resolution(resolution)
+          .with_camera_xyz(
+            rerun::components::ViewCoordinates::RDF)  // ROS standard: X=Right, Y=Down, Z=Forward
+          .with_image_plane_distance(1.0);
 
-    // RCLCPP_DEBUG(
-    //   node_->getRosNode()->get_logger(),
-    //   "Logged camera intrinsics for '%s': fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f, resolution=%dx%d",
-    //   entityPath.c_str(), fx, fy, cx, cy, msg->width, msg->height);
+      // Log the pinhole camera model to Rerun
+      rec_->log(entityPath, pinhole);
+    }
+
   } catch (const std::exception & e) {
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "Failed to get camera namespace from topic %s: %s",

@@ -47,7 +47,7 @@ void RobotDescription::topic_callback(const std_msgs::msg::String::SharedPtr msg
     return;
   }
 
-  rec_->log(topic_name_ + "/RobotDescription", rerun::TextDocument(msg->data));
+  // rec_->log(topic_name_ + "/RobotDescription", rerun::TextDocument(msg->data));
 
   urdf::Model model;
   model.initString(msg->data);

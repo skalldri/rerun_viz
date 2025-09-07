@@ -61,11 +61,21 @@ void Image::topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const
       topic_name_ + "/Image",
       rerun::Image::from_grayscale8(msg->data, rerun::WidthHeight(msg->width, msg->height)));
   } else if (msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1) {
-    rec_->log(
-      topic_name_ + "/Image",
-      rerun::Image(
-        msg->data, rerun::WidthHeight(msg->width, msg->height), rerun::datatypes::ColorModel::L,
-        rerun::datatypes::ChannelDatatype::U16));
+    // TODO: this is a disgusting hack. Need a better way to tell when a topic should be a depth image.
+    if (topic_name_.find("depth") != std::string::npos) {
+      rec_->log(
+        topic_name_ + "/DepthImage",
+        rerun::DepthImage(reinterpret_cast<uint16_t *>(msg->data.data()), {msg->width, msg->height})
+          .with_meter(1000.0)
+          .with_colormap(rerun::components::Colormap::Viridis));
+    } else {
+      rec_->log(
+        topic_name_ + "/Image",
+        rerun::Image(
+          msg->data, rerun::WidthHeight(msg->width, msg->height), rerun::datatypes::ColorModel::L,
+          rerun::datatypes::ChannelDatatype::U16));
+    }
+
   } else {
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "Unsupported image encoding '%s' on topic %s",
