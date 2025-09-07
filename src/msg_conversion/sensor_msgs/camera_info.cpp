@@ -21,6 +21,7 @@
 #include <rerun_viz/msg_conversion/sensor_msgs/camera_info.hpp>
 #include <rerun_viz/msg_conversion/tf2_msgs/tf_message.hpp>
 #include <rerun_viz/utils.hpp>
+#include <image_geometry/pinhole_camera_model.hpp>
 
 #include <tf2/time.hpp>
 
@@ -58,34 +59,27 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
       return;
     }
 
-    // TODO: fix timestamping
-    geometry_msgs::msg::TransformStamped t = node_->lookupTransform(
-      node_->getFixedFrameId(), msg->header.frame_id, tf2::TimePointZero /*msg->header.stamp*/);
-
     tf_request_.emplace(
       node_->getFixedFrameId(), std::string(msg->header.frame_id), entityPath,
       TFRequestType::TranslationAndRotation);
 
-    // Extract camera intrinsics from K matrix
-    // K = [fx  0 cx]
-    //     [ 0 fy cy]
-    //     [ 0  0  1]
-    const double fx = msg->k[0];  // Focal length X
-    const double fy = msg->k[4];  // Focal length Y
-    const double cx = msg->k[2];  // Principal point X
-    const double cy = msg->k[5];  // Principal point Y
+    image_geometry::PinholeCameraModel cam_model;
+    if (!cam_model.fromCameraInfo(*msg)) {
+      RCLCPP_WARN(
+        node_->getRosNode()->get_logger(), "Failed to load pinhole camera model for %s.",
+        entityPath.c_str());
+    }
+
+    const cv::Matx33d & intrinsics = cam_model.fullIntrinsicMatrix();
 
     // Create the intrinsics matrix in the format expected by Rerun
+    // Rerun expects column-major order
     std::array<float, 9> intrinsics_matrix = {
-      static_cast<float>(fx),
-      0.0f,
-      static_cast<float>(cx),
-      0.0f,
-      static_cast<float>(fy),
-      static_cast<float>(cy),
-      0.0f,
-      0.0f,
-      1.0f};
+      static_cast<float>(intrinsics(0, 0)), static_cast<float>(intrinsics(1, 0)),
+      static_cast<float>(intrinsics(2, 0)), static_cast<float>(intrinsics(0, 1)),
+      static_cast<float>(intrinsics(1, 1)), static_cast<float>(intrinsics(2, 1)),
+      static_cast<float>(intrinsics(0, 2)), static_cast<float>(intrinsics(1, 2)),
+      static_cast<float>(intrinsics(2, 2))};
 
     // Create the pinhole projection
     auto pinhole_projection =
@@ -107,10 +101,10 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
     // Log the pinhole camera model to Rerun
     rec_->log(entityPath, pinhole);
 
-    RCLCPP_DEBUG(
-      node_->getRosNode()->get_logger(),
-      "Logged camera intrinsics for '%s': fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f, resolution=%dx%d",
-      entityPath.c_str(), fx, fy, cx, cy, msg->width, msg->height);
+    // RCLCPP_DEBUG(
+    //   node_->getRosNode()->get_logger(),
+    //   "Logged camera intrinsics for '%s': fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f, resolution=%dx%d",
+    //   entityPath.c_str(), fx, fy, cx, cy, msg->width, msg->height);
   } catch (const std::exception & e) {
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "Failed to get camera namespace from topic %s: %s",
