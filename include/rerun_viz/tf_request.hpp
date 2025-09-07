@@ -13,6 +13,16 @@ enum class TFRequestType
 
 struct TFRequest
 {
+  TFRequest() = delete;
+
+  TFRequest(
+    std::string ros_parent_frame_id, std::string ros_child_frame_id, std::string rerun_entity_path,
+    TFRequestType tf_type)
+  : ros_parent_frame_id(ros_parent_frame_id),
+    ros_child_frame_id(ros_child_frame_id),
+    rerun_entity_path(rerun_entity_path),
+    tf_type(tf_type) {};
+
   std::string ros_parent_frame_id;
   std::string ros_child_frame_id;
   std::string rerun_entity_path;

@@ -72,12 +72,9 @@ void RobotDescription::topic_callback(const std_msgs::msg::String::SharedPtr msg
     // Special case: handle the root link, which needs to be relative to the fixed frame
     // TODO: once we support changing the fixed-frame at runtime, this won't work anymore.
     // Maybe we can have a "magic" frame name that means "use the current fixed frame"?
-    TFRequest req;
-    req.ros_parent_frame_id = node_->getFixedFrameId();
-    req.ros_child_frame_id = model.getRoot()->name;
-    req.rerun_entity_path = rerun_path;
-    req.tf_type = TFRequestType::TranslationAndRotation;
-    tf_requests_.push_back(req);
+    tf_requests_.emplace_back(
+      node_->getFixedFrameId(), model.getRoot()->name, rerun_path,
+      TFRequestType::TranslationAndRotation);
 
     // Now DFS the rest of the URDF to find all the joints and links
     urdfDepthFirst(model, "/" + model.getName(), model.getRoot());
@@ -116,15 +113,10 @@ void RobotDescription::urdfDepthFirst(
     "URDF TF NEEDED: %s -> %s, type ROTATION ONLY @ rerun entity path %s",
     joint->parent_link_name.c_str(), joint->child_link_name.c_str(), rerun_entity.c_str());
 
-  TFRequest req;
-  req.ros_parent_frame_id = joint->parent_link_name;
-  req.ros_child_frame_id = joint->child_link_name;
-  req.rerun_entity_path = rerun_entity;
-  req.tf_type = TFRequestType::RotationOnly;
-
   {
     std::lock_guard lock(tf_requests_mutex_);
-    tf_requests_.push_back(req);
+    tf_requests_.emplace_back(
+      joint->parent_link_name, joint->child_link_name, rerun_entity, TFRequestType::RotationOnly);
   }
 
   // Resolve the next child link in the chain...

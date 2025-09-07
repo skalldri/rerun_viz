@@ -38,7 +38,7 @@ CameraInfo::CameraInfo(
     topic_name_, rclcpp::SensorDataQoS(), std::bind(&CameraInfo::topic_callback, this, _1));
 }
 
-void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) const
+void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr msg)
 {
   if (!rec_) {
     RCLCPP_WARN(
@@ -47,14 +47,14 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
   }
 
   try {
-    std::string cameraNamespace = rerun_viz::getCameraNamespaceFromTopic(topic_name_);
+    std::string entityPath = rerun_viz::getCameraNamespaceFromTopic(topic_name_);
 
     // Check if camera is calibrated (K[0] == 0.0 indicates uncalibrated camera)
     if (msg->k[0] == 0.0) {
       RCLCPP_WARN(
         node_->getRosNode()->get_logger(),
         "Camera '%s' appears to be uncalibrated (K[0] = 0.0), skipping intrinsics visualization.",
-        cameraNamespace.c_str());
+        entityPath.c_str());
       return;
     }
 
@@ -62,8 +62,9 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
     geometry_msgs::msg::TransformStamped t = node_->lookupTransform(
       node_->getFixedFrameId(), msg->header.frame_id, tf2::TimePointZero /*msg->header.stamp*/);
 
-    // Try to get the TF transform for the camera frame
-    std::optional<rerun::Transform3D> camera_transform = convertTransformToRerun(t.transform);
+    tf_request_.emplace(
+      node_->getFixedFrameId(), std::string(msg->header.frame_id), entityPath,
+      TFRequestType::TranslationAndRotation);
 
     // Extract camera intrinsics from K matrix
     // K = [fx  0 cx]
@@ -103,24 +104,27 @@ void CameraInfo::topic_callback(const sensor_msgs::msg::CameraInfo::SharedPtr ms
           rerun::components::ViewCoordinates::RDF)  // ROS standard: X=Right, Y=Down, Z=Forward
         .with_image_plane_distance(1.0);
 
-    // If we have a transform, log it along with the pinhole
-    if (camera_transform.has_value()) {
-      rec_->log(cameraNamespace, camera_transform.value());
-    }
-
     // Log the pinhole camera model to Rerun
-    rec_->log(cameraNamespace, pinhole);
+    rec_->log(entityPath, pinhole);
 
     RCLCPP_DEBUG(
       node_->getRosNode()->get_logger(),
       "Logged camera intrinsics for '%s': fx=%.2f, fy=%.2f, cx=%.2f, cy=%.2f, resolution=%dx%d",
-      cameraNamespace.c_str(), fx, fy, cx, cy, msg->width, msg->height);
-
+      entityPath.c_str(), fx, fy, cx, cy, msg->width, msg->height);
   } catch (const std::exception & e) {
     RCLCPP_WARN(
       node_->getRosNode()->get_logger(), "Failed to get camera namespace from topic %s: %s",
       topic_name_.c_str(), e.what());
   }
+}
+
+const std::vector<TFRequest> CameraInfo::getTfRequests()
+{
+  if (tf_request_.has_value()) {
+    return std::vector<TFRequest>({tf_request_.value()});
+  }
+
+  return std::vector<TFRequest>();
 }
 
 }  // namespace rerun_viz
