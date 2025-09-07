@@ -23,6 +23,7 @@ add_library(
   rerun_viz_lib
   STATIC
   src/node.cpp
+  src/node_runner.cpp
   src/utils.cpp
   src/tf_graph.cpp
   src/msg_conversion/converter_factory.cpp

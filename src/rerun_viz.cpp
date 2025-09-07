@@ -31,6 +31,7 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include <rerun_viz/node.hpp>
+#include <rerun_viz/node_runner.hpp>
 #include "rclcpp/rclcpp.hpp"
 
 int main(int argc, char ** argv)
@@ -67,6 +68,8 @@ int main(int argc, char ** argv)
   std::shared_ptr<rclcpp::Node> ros_node = std::make_shared<rclcpp::Node>("rerun_viz_node");
   std::shared_ptr<rerun_viz::Node> rerun_viz_node =
     std::make_shared<rerun_viz::Node>(rec, ros_node);
+
+  rerun_viz::NodeRunner runner = rerun_viz::NodeRunner(rerun_viz_node);
 
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(ros_node);

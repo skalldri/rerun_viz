@@ -8,6 +8,8 @@ namespace rerun_viz
 
 bool isCameraTopic(const std::string & topic_name, const std::vector<std::string> & topic_types)
 {
+  (void)topic_name;  // Currently unused, but might be useful in the future
+
   // Special types that indicate a camera topic
   std::vector<std::string> camera_types = {"sensor_msgs/msg/Image", "sensor_msgs/msg/CameraInfo"};
 

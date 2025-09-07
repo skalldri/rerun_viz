@@ -30,8 +30,6 @@ public:
    */
   Node(std::shared_ptr<rerun::RecordingStream> rec, std::shared_ptr<rclcpp::Node> node);
 
-  ~Node();
-
   void on_timer();
 
   void handleTfRequest(const TFRequest & req);
@@ -64,12 +62,6 @@ public:
   std::shared_ptr<Converter> getConverter(const std::string & topic, const std::string & type);
 
   /**
-   * @brief Query the ROS node for the current list of topics and types, and then update our subscriptions
-   * 
-   */
-  void getTopicsAndUpdateSubscriptions();
-
-  /**
    * @brief Get the underlying ROS node object
    * 
    * @return std::shared_ptr<rclcpp::Node> 
@@ -90,30 +82,6 @@ public:
     const tf2::TimePoint & time);
 
 private:
-  /**
-   * @brief Stop and join the graph update thread.
-   * 
-   */
-  void stopAndJoinGraphUpdateThread();
-
-  /**
-   * @brief The entry point for the graph update thread. This will periodically query the ROS node
-   * for the current list of topics and types, and call updateSubscriptions() to ensure we are subscribed
-   * to all topics.
-   */
-  void graphUpdateThread();
-
-  /**
-   * @brief Helper function that encapsulates the conditions that dictate if the graph update thread should keep running.
-   * 
-   * @return true keep running
-   * @return false quit at the next opportunity
-   */
-  bool canGraphUpdateThreadRun();
-
-  std::thread graph_update_thread_;
-  std::atomic_bool stop_graph_update_thread_{false};
-
   std::mutex subscriptions_mutex_;
   std::map<std::string, std::vector<std::shared_ptr<Converter>>> subscriptions_;
   std::shared_ptr<rerun::RecordingStream> rec_;
